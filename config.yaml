@@ -18,13 +18,11 @@ ports_description:
 options:
   host: "0.0.0.0"
   port: 8788
-  config_path: "/config/media-proxy/config.yaml"
-  extra_args: ""
+  log_level: "INFO"
 schema:
   host: str
   port: int
-  config_path: str
-  extra_args: str
+  log_level: "list(DEBUG|INFO|WARNING|ERROR)"
 devices:
   - /dev/dri
 tmpfs: true  # Enable tmpfs for /tmp - faster image caching using RAM

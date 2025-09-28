@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import json, os, shlex, sys
+from pathlib import Path
 
 OPTIONS = "/data/options.json"
 SERVER  = "/app/src/run.py"
@@ -14,16 +15,18 @@ def main():
         print(f"[addon] options load error: {e}", flush=True)
         o = {}
 
-    host  = o.get("host", "0.0.0.0")
-    port  = int(o.get("port", 8788))
-    cfg   = o.get("config_path") or ""
-    extra = o.get("extra_args", "")
+    host      = o.get("host", "0.0.0.0")
+    port      = int(o.get("port", 8788))
+    log_level = o.get("log_level", "INFO")
 
     cmd = [sys.executable, SERVER, "--host", str(host), "--port", str(port)]
-    if cfg:
-        cmd += ["--config", cfg]
-    if extra.strip():
-        cmd += shlex.split(extra)
+
+    # Automatically check for config file in /config/config.yaml
+    config_file = Path("/config/config.yaml")
+    if config_file.exists():
+        cmd += ["--config", str(config_file)]
+
+    cmd += ["--log-level", log_level]
 
     print("[addon] exec:", " ".join(shlex.quote(c) for c in cmd), flush=True)
     os.execvp(cmd[0], cmd)

@@ -34,6 +34,20 @@ This add-on is part of the Stuart Parmenter Home Assistant Add-ons repository. T
 3. Use the API to stream content to your LED/LCD displays
 4. See the [main documentation](https://github.com/stuartparmenter/media-proxy) for API details and ESPHome integration examples
 
+## Custom Configuration
+
+The addon reads configuration files from `/addon_configs/2b3c960e_media_proxy/` on your Home Assistant host. To create and edit these files:
+
+1. Install the **File Editor** addon from the Home Assistant addon store (found under Official add-ons)
+2. Go to the File Editor addon configuration
+3. Turn off **"Enforce Basepath"** to allow navigation outside the `/homeassistant` directory
+4. Navigate to `/addon_configs/2b3c960e_media_proxy/`
+5. Create a `config.yaml` file in this directory with your custom configuration
+
+For configuration file format and options, see: [Configuration Documentation](https://github.com/stuartparmenter/media-proxy?tab=readme-ov-file#configuration)
+
+Alternatively, you can access these files directly if you have SSH access to your Home Assistant host.
+
 ## ESPHome Integration
 
 For ESPHome device integration examples, see: [lvgl-ddp-stream](https://github.com/stuartparmenter/lvgl-ddp-stream)
