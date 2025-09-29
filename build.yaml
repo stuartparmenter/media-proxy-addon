@@ -5,6 +5,3 @@ args:
   APP_REPO: "https://github.com/stuartparmenter/media-proxy"
   APP_REF: "main"
   APP_SUBDIR: "src"
-codenotary:
-  signer: "pavlov@pavlov.net"
-  base_image: "notary@home-assistant.io"
