@@ -19,6 +19,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5.0.0
 
+      - name: Update version in config.yaml
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION_NO_V="${VERSION#v}"
+          sed -i "s/^version: .*/version: \"${VERSION_NO_V}\"/" config.yaml
+
       - name: Get information
         id: info
         uses: home-assistant/actions/helpers/info@master
