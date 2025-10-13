@@ -8,6 +8,8 @@ jobs:
   publish:
     name: 📢 Publish Add-on
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: 🚀 Dispatch Repository Updater update signal
         uses: peter-evans/repository-dispatch@v4
