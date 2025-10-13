@@ -8,6 +8,7 @@ image: "ghcr.io/stuartparmenter/{arch}-media-proxy-addon"
 startup: services
 init: false
 host_network: true          # DDP over UDP to arbitrary targets = easiest with host net
+homeassistant_api: true     # Enable SUPERVISOR_TOKEN and API proxy for ha-template protocol
 panel_icon: mdi:video-wireless
 map: [addon_config, media]
 environment: { PYTHONUNBUFFERED: "1" }
