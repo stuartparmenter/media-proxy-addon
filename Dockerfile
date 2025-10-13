@@ -1,17 +1,12 @@
 # must be first so FROM can use it
 ARG BUILD_FROM
 
-# ----- Stage 1: fetch just the app bits from the repo -----
+# ----- Stage 1: fetch the app from the repo -----
 FROM alpine/git:2.45.2 AS fetch
 ARG APP_REPO
 ARG APP_REF
-ARG APP_SUBDIR
 
-RUN git clone --filter=blob:none --no-checkout "${APP_REPO}" /src \
- && cd /src \
- && git sparse-checkout init --cone \
- && git sparse-checkout set "${APP_SUBDIR}" \
- && git checkout "${APP_REF}"
+RUN git clone --depth 1 --branch "${APP_REF}" "${APP_REPO}" /src
 
 # ----- Stage 2: Home Assistant base runtime (Alpine/musl) -----
 FROM $BUILD_FROM AS runtime
@@ -38,8 +33,8 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Copy the entire src/ tree from stage 1 (no ARG in this stage)
-COPY --from=fetch /src/src/ /app/src/
+# Copy entire repo from stage 1 (includes pyproject.toml)
+COPY --from=fetch /src/ /app/
 
 # Build-only deps for wheels + create venv + pip install into venv, then clean
 RUN apk add --no-cache --virtual .build-deps \
@@ -47,7 +42,7 @@ RUN apk add --no-cache --virtual .build-deps \
  && python3 -m venv /opt/venv \
  && . /opt/venv/bin/activate \
  && pip install --upgrade pip \
- && pip install -r /app/src/requirements.txt -c /app/src/constraints.txt \
+ && pip install /app \
  && apk del .build-deps
 
 # Use the venv's python/pip by default

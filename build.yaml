@@ -4,4 +4,3 @@ build_from:
 args:
   APP_REPO: "https://github.com/stuartparmenter/media-proxy"
   APP_REF: "main"
-  APP_SUBDIR: "src"
