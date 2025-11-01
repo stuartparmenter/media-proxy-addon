@@ -1,0 +1,41 @@
+name: Sync App Version
+
+on:
+  repository_dispatch:
+    types: [app-release]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-app-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Update build.yaml
+        run: |
+          VERSION="${{ github.event.client_payload.version }}"
+          sed -i "s|APP_REF: \".*\"|APP_REF: \"$VERSION\"|" build.yaml
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          commit-message: "deps: bump media-proxy to ${{ github.event.client_payload.version }}"
+          title: "Bump media-proxy to ${{ github.event.client_payload.version }}"
+          body: |
+            Updates media-proxy to [${{ github.event.client_payload.version }}](https://github.com/stuartparmenter/media-proxy/releases/tag/${{ github.event.client_payload.version }})
+
+            This PR was automatically created by the sync-app-version workflow.
+          branch: "deps/media-proxy-${{ github.event.client_payload.version }}"
+          labels: "dependencies,${{ github.event.client_payload.bump_type }}"
+
+      - name: Enable auto-merge
+        if: steps.cpr.outputs.pull-request-number
+        run: gh pr merge --auto --squash "${{ steps.cpr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
