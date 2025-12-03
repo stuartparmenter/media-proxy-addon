@@ -46,6 +46,7 @@ RUN apk add --no-cache --virtual .build-deps \
  && . /opt/venv/bin/activate \
  && pip install --upgrade pip \
  && pip install /app \
+ && apk update \
  && apk del .build-deps
 
 # Use the venv's python/pip by default
