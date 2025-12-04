@@ -3,4 +3,4 @@ build_from:
   amd64: "ghcr.io/home-assistant/amd64-base:3.22"
 args:
   APP_REPO: "https://github.com/stuartparmenter/media-proxy"
-  APP_REF: "v0.5.8"
+  APP_REF: "v0.5.9"
