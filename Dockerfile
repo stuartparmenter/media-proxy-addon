@@ -12,7 +12,9 @@ RUN git clone --depth 1 --branch "${APP_REF}" "${APP_REPO}" /src
 FROM $BUILD_FROM AS runtime
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 
-# Runtime deps
+# Add Alpine edge community repo for Deno (required by yt-dlp for YouTube)
+RUN echo "@edge-community https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+
 # Runtime deps (+ HW decode support for Intel iGPU on x86 platforms)
 RUN apk add --no-cache \
       python3 \
@@ -27,6 +29,7 @@ RUN apk add --no-cache \
       libwebp \
       tiff \
       zlib \
+      deno@edge-community \
  && if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "i386" ]; then \
       apk add --no-cache intel-media-driver; \
     fi
@@ -43,6 +46,7 @@ RUN apk add --no-cache --virtual .build-deps \
  && . /opt/venv/bin/activate \
  && pip install --upgrade pip \
  && pip install /app \
+ && apk update \
  && apk del .build-deps
 
 # Use the venv's python/pip by default
