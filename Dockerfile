@@ -18,7 +18,8 @@ RUN case "$BUILD_ARCH" in \
  && curl --fail --location --retry 3 -o "$asset" "$base/$asset" \
  && curl --fail --location --retry 3 -o "$asset.sha256" "$base/$asset.sha256" \
  && sha256sum -c "$asset.sha256" \
- && tar -xzf "$asset" media-proxy LICENSE THIRD_PARTY_LICENSES.md
+ && tar -xzf "$asset" media-proxy LICENSE THIRD_PARTY_LICENSES.md \
+      vendor/image-webp/LICENSE-MIT vendor/image-webp/LICENSE-APACHE
 
 FROM $BUILD_FROM AS runtime
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
@@ -43,6 +44,7 @@ RUN python3 -m venv /opt/venv \
 
 COPY --from=fetch /download/media-proxy /usr/local/bin/media-proxy
 COPY --from=fetch /download/LICENSE /download/THIRD_PARTY_LICENSES.md /usr/share/licenses/media-proxy/
+COPY --from=fetch /download/vendor/image-webp/LICENSE-MIT /download/vendor/image-webp/LICENSE-APACHE /usr/share/licenses/media-proxy/vendor/image-webp/
 RUN media-proxy --version
 COPY run.py /run.py
 CMD ["python3", "/run.py"]

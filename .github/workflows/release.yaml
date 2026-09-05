@@ -2,7 +2,7 @@ name: Release
 
 on:
   release:
-    types: [published]
+    types: [published, released]
 
 env:
   ARCHITECTURES: '["amd64", "aarch64"]'
@@ -13,6 +13,9 @@ concurrency:
 
 jobs:
   init:
+    # Published covers draft prereleases; released covers stable releases and
+    # promotions. Skip the duplicate published event for initial stable releases.
+    if: github.event.action == 'released' || github.event.release.prerelease
     runs-on: ubuntu-latest
     name: Initialize build
     outputs:
@@ -45,11 +48,14 @@ jobs:
         id: config
         env:
           ARCH: ${{ matrix.arch }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           echo "build_from=$(yq ".build_from.${ARCH}" build.yaml)" >> $GITHUB_OUTPUT
           echo "app_repo=$(yq '.args.APP_REPO' build.yaml)" >> $GITHUB_OUTPUT
           echo "app_ref=$(yq '.args.APP_REF' build.yaml)" >> $GITHUB_OUTPUT
-          echo "version=$(yq '.version' config.yaml)" >> $GITHUB_OUTPUT
+          VERSION=$(yq '.version' config.yaml)
+          test "${RELEASE_TAG#v}" = "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build and push add-on
         uses: home-assistant/builder/actions/build-image@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
@@ -60,11 +66,30 @@ jobs:
           image: ${{ matrix.image }}
           image-tags: |
             ${{ steps.config.outputs.version }}
-            latest
+            ${{ !github.event.release.prerelease && 'latest' || '' }}
           push: "true"
           version: ${{ steps.config.outputs.version }}
           build-args: |
-            BUILD_ARCH=${{ matrix.arch }}
             BUILD_FROM=${{ steps.config.outputs.build_from }}
             APP_REPO=${{ steps.config.outputs.app_repo }}
             APP_REF=${{ steps.config.outputs.app_ref }}
+
+      - name: Verify the published image before updating the catalog
+        env:
+          IMAGE: ${{ matrix.image }}:${{ steps.config.outputs.version }}
+        run: python3 tests/smoke_container.py "$IMAGE"
+
+  notify-repository:
+    needs: build
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Publish catalog update only after both images are available
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          repository: stuartparmenter/homeassistant-addons
+          event-type: update
+          client-payload: '{"addon": "media-proxy"}'

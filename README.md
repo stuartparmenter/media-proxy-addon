@@ -15,7 +15,7 @@ This Home Assistant add-on provides a WebSocket control API and pushes pixel dat
 
 For complete documentation, configuration options, API reference, and usage examples, see the main repository:
 
-**📖 [Full Documentation](https://github.com/stuartparmenter/media-proxy)**
+**📖 [Full Documentation](https://github.com/pavlov-net/media-proxy)**
 
 ## Installation
 
@@ -32,7 +32,7 @@ This add-on is part of the Stuart Parmenter Home Assistant Add-ons repository. T
 1. Start the add-on
 2. The WebSocket control API will be available at `ws://your-ha-ip:8788/control`
 3. Use the API to stream content to your LED/LCD displays
-4. See the [main documentation](https://github.com/stuartparmenter/media-proxy) for API details and ESPHome integration examples
+4. See the [main documentation](https://github.com/pavlov-net/media-proxy) for API details and ESPHome integration examples
 
 ## Custom Configuration
 
@@ -44,17 +44,17 @@ The addon reads configuration files from `/addon_configs/2b3c960e_media_proxy/` 
 4. Navigate to `/addon_configs/2b3c960e_media_proxy/`
 5. Create a `config.yaml` file in this directory with your custom configuration
 
-For configuration file format and options, see: [Configuration Documentation](https://github.com/stuartparmenter/media-proxy?tab=readme-ov-file#configuration)
+For configuration file format and options, see: [Configuration Documentation](https://github.com/pavlov-net/media-proxy?tab=readme-ov-file#configuration)
 
 Alternatively, you can access these files directly if you have SSH access to your Home Assistant host.
 
 ## ESPHome Integration
 
-For ESPHome device integration examples, see: [lvgl-ddp-stream](https://github.com/stuartparmenter/lvgl-ddp-stream)
+For ESPHome device integration examples, see: [ddp-esphome](https://github.com/pavlov-net/ddp-esphome)
 
 ## Support
 
-[GitHub Issues](https://github.com/stuartparmenter/media-proxy/issues)
+[GitHub Issues](https://github.com/pavlov-net/media-proxy/issues)
 
 ## License
 
@@ -86,3 +86,15 @@ Maintainers: this branch targets core `v1.0.0`. Merge/release the core compatibi
 and binary-packaging changes first, verify both release assets exist, then require
 both add-on architecture builds and `tests/smoke_container.py` before publishing.
 Repository dispatch opens a dependency PR; it no longer enables automatic merging.
+
+For the first migration, leave the core repository variable
+`ADDON_RELEASE_DISPATCH_ENABLED` unset until this add-on migration is merged;
+otherwise the old add-on workflow could auto-merge a Rust version into the
+Python image build. Enable it afterward for future dependency PRs.
+
+Use a new add-on version and tag matching `config.yaml` (for example `v0.5.12`),
+publish that release with the **prerelease** checkbox enabled, and wait for both
+versioned images before promoting the release to stable. The add-on catalog has
+an independent daily updater that discovers stable releases, so a stable release
+must already have both images available. Prerelease builds do not update the
+`latest` image tag or dispatch the catalog updater.
