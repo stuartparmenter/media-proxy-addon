@@ -30,7 +30,7 @@ jobs:
           commit-message: "deps: bump media-proxy to ${{ github.event.client_payload.version }}"
           title: "Bump media-proxy to ${{ github.event.client_payload.version }}"
           body: |
-            Updates media-proxy to [${{ github.event.client_payload.version }}](https://github.com/stuartparmenter/media-proxy/releases/tag/${{ github.event.client_payload.version }})
+            Updates media-proxy to [${{ github.event.client_payload.version }}](https://github.com/pavlov-net/media-proxy/releases/tag/${{ github.event.client_payload.version }})
 
             Before merging, require both architecture builds and the upgrade smoke test.
             Core releases do not automatically merge or publish add-on upgrades.

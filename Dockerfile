@@ -1,6 +1,6 @@
 ARG BUILD_FROM
 
-# The add-on consumes the same portable binary as standalone Linux users.
+# Release archives contain a static binary for each architecture.
 FROM alpine:3.24 AS fetch
 ARG APP_REPO
 ARG APP_REF
@@ -26,7 +26,7 @@ ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     PATH="/opt/venv/bin:${PATH}" \
     DENO_DIR=/data/deno XDG_CACHE_HOME=/data/cache
 
-# Stay on the base's stable Alpine release; no edge repository mixing.
+# Deno and FFmpeg must use the same Alpine release as the base image.
 RUN apk add --no-cache python3 py3-pip ffmpeg deno ca-certificates \
       libdrm libva libva-utils mesa-va-gallium \
  && if [ "$(uname -m)" = "x86_64" ]; then apk add --no-cache intel-media-driver; fi
