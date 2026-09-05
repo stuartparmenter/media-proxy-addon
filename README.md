@@ -64,3 +64,25 @@ MIT License - see [LICENSE](LICENSE) file for details.
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
 [add-repo-shield]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
 [add-repo]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fstuartparmenter%2Fhomeassistant-addons
+## Rust release migration
+
+The add-on installs the standalone Rust release for its architecture, verifies
+its SHA-256 checksum, and provides FFmpeg/ffprobe, yt-dlp with its bundled EJS
+solver, and Deno. No Rust compiler or media-proxy Python package is installed in
+the runtime. Alpine 3.24 supplies Deno on both amd64 and aarch64 without using edge
+repositories. yt-dlp is pinned in `requirements.txt` and updated through dependency PRs.
+
+Existing `host`, `port`, and `log_level` options, the add-on slug, host networking,
+and `/config/config.yaml` location are retained. Existing display clients keep
+using `/control` and DDP. Home Assistant entity/template drawing was intentionally
+removed in the Rust core; source URLs using that feature need to be replaced.
+
+Before upgrading, take a Home Assistant backup including the add-on and record
+its current image version. Test a still image, an animation, a video, YouTube,
+stop/start, and a client reconnect on the actual display. Restore that backup if
+you need to return to Python; the add-on does not migrate or rewrite your config.
+
+Maintainers: this branch targets core `v1.0.0`. Merge/release the core compatibility
+and binary-packaging changes first, verify both release assets exist, then require
+both add-on architecture builds and `tests/smoke_container.py` before publishing.
+Repository dispatch opens a dependency PR; it no longer enables automatic merging.

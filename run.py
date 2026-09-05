@@ -1,35 +1,34 @@
 # © Copyright 2025 Stuart Parmenter
 # SPDX-License-Identifier: MIT
 
-import json, os, shlex, sys
+import json
+import os
 from pathlib import Path
+import shlex
 
-OPTIONS = "/data/options.json"
-SERVER  = "/app/src/run.py"
+OPTIONS = Path("/data/options.json")
+CONFIG = Path("/config/config.yaml")
+SERVER = "/usr/local/bin/media-proxy"
+
 
 def main():
     try:
-        with open(OPTIONS, "r", encoding="utf-8") as f:
-            o = json.load(f)
-    except Exception as e:
-        print(f"[addon] options load error: {e}", flush=True)
-        o = {}
+        with OPTIONS.open(encoding="utf-8") as handle:
+            options = json.load(handle)
+    except (OSError, ValueError) as error:
+        print(f"[addon] options load error: {error}", flush=True)
+        options = {}
 
-    host      = o.get("host", "0.0.0.0")
-    port      = int(o.get("port", 8788))
-    log_level = o.get("log_level", "INFO")
+    cmd = [SERVER, "--host", str(options.get("host", "0.0.0.0")),
+           "--port", str(int(options.get("port", 8788))),
+           "--log-level", str(options.get("log_level", "INFO")).lower()]
+    if CONFIG.exists():
+        cmd += ["--config", str(CONFIG)]
 
-    cmd = [sys.executable, SERVER, "--host", str(host), "--port", str(port)]
-
-    # Automatically check for config file in /config/config.yaml
-    config_file = Path("/config/config.yaml")
-    if config_file.exists():
-        cmd += ["--config", str(config_file)]
-
-    cmd += ["--log-level", log_level]
-
-    print("[addon] exec:", " ".join(shlex.quote(c) for c in cmd), flush=True)
+    print("[addon] exec:", shlex.join(cmd), flush=True)
+    # Replace the launcher so Supervisor's SIGTERM reaches media-proxy directly.
     os.execvp(cmd[0], cmd)
+
 
 if __name__ == "__main__":
     main()

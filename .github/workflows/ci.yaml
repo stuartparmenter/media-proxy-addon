@@ -1,7 +1,7 @@
 name: CI
 
 env:
-  MONITORED_FILES: "build.yaml config.yaml Dockerfile rootfs"
+  MONITORED_FILES: "build.yaml config.yaml Dockerfile run.py requirements.txt apparmor.txt tests .github/workflows"
   ARCHITECTURES: '["amd64", "aarch64"]'
   IMAGE_NAME: media-proxy-addon
 
@@ -18,6 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  launcher:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: python3 -m unittest discover -s tests -v
+
   init:
     runs-on: ubuntu-latest
     name: Initialize builds
@@ -88,8 +96,15 @@ jobs:
           image: ${{ matrix.image }}
           image-tags: test
           push: "false"
+          load: "true"
           version: test
           build-args: |
+            BUILD_ARCH=${{ matrix.arch }}
             BUILD_FROM=${{ steps.config.outputs.build_from }}
             APP_REPO=${{ steps.config.outputs.app_repo }}
             APP_REF=${{ steps.config.outputs.app_ref }}
+
+      - name: Verify installed runtime and launch with existing options
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: python3 tests/smoke_container.py "$IMAGE:test"

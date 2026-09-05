@@ -7,9 +7,15 @@ profile media_proxy flags=(attach_disconnected,mediate_deleted,complain) {
   # Add-on launcher script
   /run.py r,
 
+  # Rust server and external YouTube resolver
+  /usr/local/bin/media-proxy ix,
+  /opt/venv/bin/yt-dlp rix,
+  /usr/bin/deno ix,
+
   # Python interpreter (Alpine/musl paths)
   /opt/venv/bin/python3 ix,
   /usr/bin/python3 ix,
+  /usr/bin/python3.* ix,
   /opt/venv/lib/python3.*/** r,
   /usr/lib/python3.*/** r,
 
@@ -50,8 +56,8 @@ profile media_proxy flags=(attach_disconnected,mediate_deleted,complain) {
   owner /tmp/** rw,
 
   # Alpine system libraries
-  /lib/** r,
-  /usr/lib/** r,
+  /lib/** mr,
+  /usr/lib/** mr,
   /usr/share/** r,
 
   # DNS resolution (Alpine/musl)

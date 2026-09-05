@@ -64,6 +64,7 @@ jobs:
           push: "true"
           version: ${{ steps.config.outputs.version }}
           build-args: |
+            BUILD_ARCH=${{ matrix.arch }}
             BUILD_FROM=${{ steps.config.outputs.build_from }}
             APP_REPO=${{ steps.config.outputs.app_repo }}
             APP_REF=${{ steps.config.outputs.app_ref }}
