@@ -92,7 +92,7 @@ For the first migration, leave the core repository variable
 otherwise the old add-on workflow could auto-merge a Rust version into the
 Python image build. Enable it afterward for future dependency PRs.
 
-Use a new add-on version and tag matching `config.yaml` (for example `v0.5.12`),
+Use the unreleased add-on version and tag matching `config.yaml` (`v0.5.11`),
 publish that release with the **prerelease** checkbox enabled, and wait for both
 versioned images before promoting the release to stable. The add-on catalog has
 an independent daily updater that discovers stable releases, so a stable release
