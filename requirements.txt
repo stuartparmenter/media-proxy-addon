@@ -1,0 +1,2 @@
+# Includes yt-dlp-ejs, the bundled YouTube signature solver. Deno comes from apk.
+yt-dlp[default]==2026.8.19

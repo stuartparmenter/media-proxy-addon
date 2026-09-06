@@ -2,7 +2,7 @@ name: Release
 
 on:
   release:
-    types: [published]
+    types: [published, released]
 
 env:
   ARCHITECTURES: '["amd64", "aarch64"]'
@@ -13,6 +13,8 @@ concurrency:
 
 jobs:
   init:
+    # Draft prereleases emit published; stable releases also emit released.
+    if: github.event.action == 'released' || github.event.release.prerelease
     runs-on: ubuntu-latest
     name: Initialize build
     outputs:
@@ -28,7 +30,7 @@ jobs:
   build:
     needs: init
     runs-on: ${{ matrix.os }}
-    name: Build and publish ${{ matrix.arch }} add-on
+    name: Verify and publish ${{ matrix.arch }} add-on
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
@@ -38,32 +40,122 @@ jobs:
       packages: write
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
       - name: Get build configuration
         id: config
         env:
           ARCH: ${{ matrix.arch }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          echo "build_from=$(yq ".build_from.${ARCH}" build.yaml)" >> $GITHUB_OUTPUT
-          echo "app_repo=$(yq '.args.APP_REPO' build.yaml)" >> $GITHUB_OUTPUT
-          echo "app_ref=$(yq '.args.APP_REF' build.yaml)" >> $GITHUB_OUTPUT
-          echo "version=$(yq '.version' config.yaml)" >> $GITHUB_OUTPUT
+          echo "build_from=$(yq ".build_from.${ARCH}" build.yaml)" >> "$GITHUB_OUTPUT"
+          echo "app_repo=$(yq '.args.APP_REPO' build.yaml)" >> "$GITHUB_OUTPUT"
+          echo "app_ref=$(yq '.args.APP_REF' build.yaml)" >> "$GITHUB_OUTPUT"
+          VERSION=$(yq '.version' config.yaml)
+          test "${RELEASE_TAG#v}" = "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push add-on
+      - name: Inspect the versioned image
+        id: existing
+        env:
+          IMAGE: ${{ matrix.image }}:${{ steps.config.outputs.version }}
+        run: |
+          if docker manifest inspect "$IMAGE" > /dev/null 2> "$RUNNER_TEMP/manifest-error"; then
+            DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}')
+            REFERENCE="${IMAGE%:*}@$DIGEST"
+            docker pull "$REFERENCE"
+            echo "reference=$REFERENCE" >> "$GITHUB_OUTPUT"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -Eq '^(manifest unknown|no such manifest: .*)$' "$RUNNER_TEMP/manifest-error"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            cat "$RUNNER_TEMP/manifest-error" >&2
+            exit 1
+          fi
+
+      - name: Build a new version locally
+        if: steps.existing.outputs.exists == 'false'
         uses: home-assistant/builder/actions/build-image@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
         with:
           arch: ${{ matrix.arch }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
-          cosign: "true"
+          cosign: "false"
           image: ${{ matrix.image }}
-          image-tags: |
-            ${{ steps.config.outputs.version }}
-            latest
-          push: "true"
+          image-tags: ${{ steps.config.outputs.version }}
+          push: "false"
+          load: "true"
           version: ${{ steps.config.outputs.version }}
           build-args: |
             BUILD_FROM=${{ steps.config.outputs.build_from }}
             APP_REPO=${{ steps.config.outputs.app_repo }}
             APP_REF=${{ steps.config.outputs.app_ref }}
+
+      - name: Smoke test before publishing
+        env:
+          IMAGE: ${{ matrix.image }}:${{ steps.config.outputs.version }}
+          REFERENCE: ${{ steps.existing.outputs.reference }}
+        run: python3 tests/smoke_container.py "${REFERENCE:-$IMAGE}"
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Publish and sign the tested digest
+        env:
+          IMAGE: ${{ matrix.image }}:${{ steps.config.outputs.version }}
+          EXISTS: ${{ steps.existing.outputs.exists }}
+          ARCH: ${{ matrix.arch }}
+          REFERENCE: ${{ steps.existing.outputs.reference }}
+        run: |
+          if [ "$EXISTS" = false ]; then
+            docker push "$IMAGE"
+            DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}')
+            REFERENCE="${IMAGE%:*}@$DIGEST"
+          fi
+          cosign sign --yes "$REFERENCE"
+          mkdir -p images
+          echo "$REFERENCE" > "images/$ARCH"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-${{ matrix.arch }}
+          path: images/*
+
+  promote:
+    needs: build
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: image-*
+          path: images
+          merge-multiple: true
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+      - name: Promote both tested digests to latest
+        env:
+          REGISTRY_OWNER: ${{ github.repository_owner }}
+        run: |
+          for ARCH in amd64 aarch64; do
+            IMAGE="ghcr.io/$REGISTRY_OWNER/$ARCH-$IMAGE_NAME"
+            REFERENCE=$(cat "images/$ARCH")
+            case "$REFERENCE" in "$IMAGE"@sha256:*) ;; *) exit 1 ;; esac
+            docker buildx imagetools create --prefer-index=false --tag "$IMAGE:latest" "$REFERENCE"
+          done
+      - name: Update the add-on catalog
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          repository: stuartparmenter/homeassistant-addons
+          event-type: update
+          client-payload: '{"addon": "media-proxy"}'

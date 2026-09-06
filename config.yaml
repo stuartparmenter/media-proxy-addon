@@ -2,18 +2,17 @@ name: Media Proxy
 version: "0.5.11"
 slug: media_proxy
 description: "WebSocket-controlled media proxy that outputs DDP (UDP)"
-url: https://github.com/stuartparmenter/media-proxy
+url: https://github.com/pavlov-net/media-proxy
 arch: [aarch64, amd64]
 image: "ghcr.io/stuartparmenter/{arch}-media-proxy-addon"
 startup: services
 init: false
-host_network: true          # DDP over UDP to arbitrary targets = easiest with host net
-homeassistant_api: true     # Enable SUPERVISOR_TOKEN and API proxy for ha-template protocol
+host_network: true
 panel_icon: mdi:video-wireless
 map: [addon_config, media]
 environment: { PYTHONUNBUFFERED: "1" }
 ports:
-  8788/tcp: 8788            # WebSocket control (/control)
+  8788/tcp: 8788
 ports_description:
   8788/tcp: WebSocket control (/control)
 options:
@@ -26,4 +25,4 @@ schema:
   log_level: "list(DEBUG|INFO|WARNING|ERROR)"
 devices:
   - /dev/dri
-tmpfs: true  # Enable tmpfs for /tmp - faster image caching using RAM
+tmpfs: true

@@ -1,7 +1,6 @@
 name: CI
 
 env:
-  MONITORED_FILES: "build.yaml config.yaml Dockerfile rootfs"
   ARCHITECTURES: '["amd64", "aarch64"]'
   IMAGE_NAME: media-proxy-addon
 
@@ -18,37 +17,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  launcher:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: python3 -m unittest discover -s tests -v
+
   init:
     runs-on: ubuntu-latest
     name: Initialize builds
     permissions:
       contents: read
     outputs:
-      changed: ${{ steps.changed_addons.outputs.changed }}
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Get changed files
-        id: changed_files
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-
-      - name: Check if add-on files changed
-        id: changed_addons
-        run: |
-          for file in ${{ env.MONITORED_FILES }}; do
-            if [[ "${{ steps.changed_files.outputs.all_changed_files }}" =~ $file ]]; then
-              echo "Add-on files changed, triggering build";
-              echo "changed=true" >> $GITHUB_OUTPUT;
-              exit 0
-            fi
-          done
-          echo "No monitored files changed (${{ env.MONITORED_FILES }})";
-          echo "changed=false" >> $GITHUB_OUTPUT;
-
       - name: Get build matrix
-        if: steps.changed_addons.outputs.changed == 'true'
         id: matrix
         uses: home-assistant/builder/actions/prepare-multi-arch-matrix@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
         with:
@@ -57,7 +42,6 @@ jobs:
 
   build:
     needs: init
-    if: needs.init.outputs.changed == 'true'
     runs-on: ${{ matrix.os }}
     name: Build ${{ matrix.arch }} add-on
     strategy:
@@ -88,8 +72,14 @@ jobs:
           image: ${{ matrix.image }}
           image-tags: test
           push: "false"
+          load: "true"
           version: test
           build-args: |
             BUILD_FROM=${{ steps.config.outputs.build_from }}
             APP_REPO=${{ steps.config.outputs.app_repo }}
             APP_REF=${{ steps.config.outputs.app_ref }}
+
+      - name: Verify installed runtime and launch with existing options
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: python3 tests/smoke_container.py "$IMAGE:test"
